@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: asteroid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: asteroid_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  redis:
+    image: redis:8-alpine
+    container_name: asteroid-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: asteroid-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+
+volumes:
+  postgres-data:
+  redis-data:
