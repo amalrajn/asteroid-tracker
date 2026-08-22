@@ -1,4 +1,5 @@
-import type { Asteroid } from "../types/asteroid.js";
+import type { Asteroid, CloseApproach } from "../types/asteroid.js";
+import { LUNAR_DISTANCE_KM } from "../types/asteroid.js";
 import { getJson, ApiError } from "./http.js";
 
 const KEY = process.env.NASA_KEY;
@@ -22,7 +23,9 @@ interface NeoWire {
   close_approach_data: Array<{
     epoch_date_close_approach: number; //ms
     relative_velocity: { kilometers_per_second: string };
-    miss_distance: { kilometers: string };                  
+    // NASA publishes `lunar` itself, so we take it rather than dividing by our
+    // own constant — they use ~384,570 km, not the 384,400 km mean.
+    miss_distance: { kilometers: string; lunar: string };
     orbiting_body: string;
   }>;
 }
@@ -86,4 +89,48 @@ export function toAsteroids(feed_response: NeoFeedResponse): Asteroid[]{
   return [...asteroidById.values()].sort((left, right) =>
     left.spkId < right.spkId ? -1 : left.spkId > right.spkId ? 1 : 0,
   );
+}
+
+//look at sentry.ts for purpose
+function num(value: string | null | undefined): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function toCloseApproaches(feed_response: NeoFeedResponse): CloseApproach[] {
+  // Keyed on spkId + epoch, matching the composite primary key. The same
+  // object shows up again whenever polling windows overlap.
+  const byKey = new Map<string, CloseApproach>();
+
+  for (const neo of Object.values(feed_response.near_earth_objects).flat()) {
+    for (const approach of neo.close_approach_data) {
+      const missDistanceKm = num(approach.miss_distance.kilometers);
+      const velocityKmS = num(approach.relative_velocity.kilometers_per_second);
+      const epochMs = approach.epoch_date_close_approach;
+
+      if (missDistanceKm == null || velocityKmS == null || !Number.isFinite(epochMs)) {
+        continue;
+      }
+
+      const key = `${neo.neo_reference_id}@${epochMs}`;
+      if (byKey.has(key)) continue;
+
+      byKey.set(key, {
+        spkId: neo.neo_reference_id,
+        approachAt: new Date(epochMs),
+        missDistanceKm,
+        // Prefer NASA's own lunar figure; fall back to our constant only if
+        // the field is missing or malformed.
+        missDistanceLunar: num(approach.miss_distance.lunar) ?? missDistanceKm / LUNAR_DISTANCE_KM,
+        velocityKmS,
+        orbitingBody: approach.orbiting_body,
+      });
+    }
+  }
+
+  return [...byKey.values()].sort((left, right) => {
+    if (left.spkId !== right.spkId) return left.spkId < right.spkId ? -1 : 1;
+    return left.approachAt.getTime() - right.approachAt.getTime();
+  });
 }
