@@ -97,11 +97,8 @@ interface LovImpactor extends VirtualImpactorBase {
   stretch: string;
 }
 
-/**
- * A virtual impactor row. The method-specific fields differ, and — unlike mode
- * V — mode O does NOT repeat `method` on each row, so there is no literal
- * discriminant to switch on. Narrow with the guards below instead.
- */
+// Mode O omits `method` on each row, so there is no literal discriminant.
+// Narrow with the guards below instead.
 export type VirtualImpactor = IobsImpactor | McImpactor | LovImpactor;
 
 export function isIobs(vi: VirtualImpactor): vi is IobsImpactor {
@@ -155,6 +152,7 @@ function num(value: string | null | undefined): number | null {
 function parseSentryDate(value: string | null | undefined): Date | null {
   if (!value) return null;
 
+  // Y-M-D with an optional fractional day: "1979-12-15" or "2020-10-3.80160"
   const fractional = /^(\d{4})-(\d{1,2})-(\d{1,2})(\.\d+)?$/.exec(value);
   if (fractional) {
     const [, year, month, day, frac] = fractional;
@@ -200,6 +198,7 @@ function deriveImpactEnergyMt(
 
 /** Sentry's impact window, always "YYYY-YYYY" e.g. "2056-2113". */
 function parseYearRange(range: string | null | undefined): [number | null, number | null] {
+  // exactly two 4-digit years either side of a hyphen: "2056-2113"
   const match = /^(\d{4})-(\d{4})$/.exec(range ?? "");
   if (!match) return [null, null];
   return [Number(match[1]), Number(match[2])];
@@ -242,14 +241,8 @@ export async function fetchSentryApiR(): Promise<SentryListResponse<SentryRemove
 /*  Mappers                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Mode S rows -> domain risk records, sorted by designation for stable hashing.
- *
- * `spkId` is deliberately absent: mode S returns only `des` and Sentry's own
- * internal `id`, never an SPK-ID. The producer resolves it by joining
- * `designation` against the asteroid table, which is why neows.ts normalises
- * NeoWs names down to the same primary designation.
- */
+// spkId is absent because mode S returns only `des` and Sentry's internal id.
+// The producer resolves it by joining designation against the asteroid table.
 export function toSentryRisks(
   response: SentryListResponse<SentrySummaryRow>,
 ): Array<Omit<SentryRisk, "spkId">> {

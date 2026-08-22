@@ -1,31 +1,17 @@
 
-/**
- * NASA JPL small-body SPK-ID, e.g. "3542519".
- *
- * This is the join key between the two APIs and the primary key everywhere in
- * our system. NeoWs calls it `neo_reference_id`; Sentry accepts it as `spk`.
- *
- */
+// NASA JPL small-body SPK-ID, e.g. "3542519". Primary key everywhere.
+// NeoWs calls it `neo_reference_id`; Sentry accepts it as `spk`.
 export type SpkId = string;
 
-/**
- * Torino impact hazard scale: 0 (no hazard) through 10 (certain global
- * catastrophe).
- */
+/** Torino impact hazard scale: 0 (no hazard) through 10 (certain catastrophe). */
 export type TorinoScale = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 /* -------------------------------------------------------------------------- */
 /*  Entities                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/**
- * A near-Earth object's identity and physical properties.
- *
- * Slow-moving data — diameter estimates change only when new observations
- * refine the absolute magnitude.
- *
- * Postgres: primary key `spkId`.
- */
+// Identity and physical properties. Slow-moving: only changes when new
+// observations refine the magnitude. Postgres primary key `spkId`.
 export interface Asteroid {
   spkId: SpkId;
   designation: string;
@@ -38,15 +24,8 @@ export interface Asteroid {
   jplUrl: string; //JPL's real life URL for this object if available
 }
 
-/**
- * One predicted or observed close approach: this asteroid, this moment.
- *
- * Distinct from Asteroid because a single object has many approaches over
- * time, and the Feed endpoint returns them per-date.
- *
- * Postgres: composite primary key (spkId, approachAt) — no surrogate id
- * needed, since an object cannot have two approaches at the same instant.
- */
+// One approach event. Separate from Asteroid because one object has many.
+// Postgres composite primary key (spkId, approachAt) — no surrogate id needed.
 export interface CloseApproach {
   spkId: SpkId;
 
@@ -56,20 +35,12 @@ export interface CloseApproach {
   missDistanceKm: number;
   missDistanceLunar: number; //Same distance in lunar distances (1 LD ≈ 384,400 km)
   velocityKmS: number;
-  /**
-   * The body being approached. The Feed gives "Earth", but the Lookup
-   * endpoint returns an object's full approach history and uses values like
-   * "Venus", "Mars", and "Juptr" (sic). Filter to "Earth" before displaying,
-   * or a Mars flyby will show up as a near miss.
-   */
+  // Feed gives "Earth"; Lookup also returns "Venus"/"Mars"/"Juptr" (sic).
+  // Filter to Earth before displaying or a Mars flyby reads as a near miss.
   orbitingBody: string;
 }
 
-/**
- * A snapshot of Sentry's impact-risk assessment for one asteroid.
- *
- * Postgres: primary key `spkId`.
- */
+/** Sentry's impact-risk assessment for one asteroid. Postgres key `spkId`. */
 export interface SentryRisk {
   spkId: SpkId;
   designation: string;

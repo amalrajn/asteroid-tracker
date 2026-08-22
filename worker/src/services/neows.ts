@@ -59,8 +59,10 @@ export async function fetchNeoApi(start_date: string, end_date: string): Promise
 
 function toDesignation(name: string): string {
     /*parses designation to only get the number id*/
-    const numbered = /^(\d+)\s/.exec(name); 
+    // leading digits before a space: "465633 (2009 JR5)" -> "465633"
+    const numbered = /^(\d+)\s/.exec(name);
     if (numbered) return numbered[1]!;
+    // strip all parens: "(2008 QV11)" -> "2008 QV11"
     return name.replace(/[()]/g, "").trim();
 }
 
